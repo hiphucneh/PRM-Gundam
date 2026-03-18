@@ -1,0 +1,51 @@
+name: gundam_shop
+description: A new Flutter project
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.3.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # 🔥 BACKEND
+  supabase_flutter: ^2.12.0
+
+  # 🔐 AUTH
+  google_sign_in: ^7.2.0
+
+  # 🧠 STATE
+  get: ^4.7.3
+
+  # 🔑 ENV
+  flutter_dotenv: ^6.0.0
+
+  # 📸 UPLOAD IMAGE
+  image_picker: ^1.1.2
+
+  # 📊 CHART
+  fl_chart: ^0.68.0
+
+  # 🌐 NETWORK IMAGE CACHE (load ảnh mượt)
+  cached_network_image: ^3.3.1
+
+  # ✨ ANIMATION
+  flutter_animate: ^4.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - .env
+    - assets/images/
