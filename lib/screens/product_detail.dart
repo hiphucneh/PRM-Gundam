@@ -1,22 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart'; // ✅ THÊM
 import '../controllers/cart_controller.dart';
 
 class ProductDetailScreen extends StatelessWidget {
   final Map product;
-  final cart = CartController();
 
   ProductDetailScreen({super.key, required this.product});
 
+  // ❗ FIX: dùng chung instance
+  final cart = Get.find<CartController>();
+
   @override
   Widget build(BuildContext context) {
-    // ✅ FIX QUAN TRỌNG
     final image = (product['image'] != null && product['image'].isNotEmpty)
         ? product['image'][0]['url']
         : '';
 
     return Scaffold(
       appBar: AppBar(title: Text(product['name'])),
-      body: ListView( // ✅ FIX overflow + scroll
+      body: ListView(
         children: [
           image != ''
               ? Image.network(image, height: 250, fit: BoxFit.cover)
@@ -33,17 +35,14 @@ class ProductDetailScreen extends StatelessWidget {
 
                 SizedBox(height: 10),
 
-                Text(
-                  "${product['price']} VND",
-                  style: TextStyle(
-                      fontSize: 20,
-                      color: Colors.red,
-                      fontWeight: FontWeight.bold),
-                ),
+                Text("${product['price']} VND",
+                    style: TextStyle(
+                        fontSize: 20,
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold)),
 
                 SizedBox(height: 15),
 
-                // ✅ THÊM DESCRIPTION
                 Text("Mô tả:",
                     style: TextStyle(fontWeight: FontWeight.bold)),
                 SizedBox(height: 5),
@@ -57,12 +56,16 @@ class ProductDetailScreen extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       padding: EdgeInsets.all(14),
                       backgroundColor: Colors.red,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
                     ),
-                    onPressed: () {
-                      cart.addToCart(product['product_id'], 1);
+                    onPressed: () async {
+                      await cart.addToCart(product['product_id'], 1);
+
+                      // ✅ THÊM THÔNG BÁO
+                      Get.snackbar(
+                        "Thành công",
+                        "Đã thêm vào giỏ 🛒",
+                        snackPosition: SnackPosition.BOTTOM,
+                      );
                     },
                     child: Text("Add to Cart",
                         style: TextStyle(color: Colors.white)),

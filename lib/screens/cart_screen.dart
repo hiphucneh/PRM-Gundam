@@ -4,10 +4,14 @@ import '../controllers/cart_controller.dart';
 import 'checkout_screen.dart';
 
 class CartScreen extends StatelessWidget {
+  // ❗ FIX: chỉ tạo 1 lần duy nhất
   final cart = Get.put(CartController());
 
   @override
   Widget build(BuildContext context) {
+    // ✅ load lại mỗi khi mở màn
+    cart.getCartItems();
+
     return Scaffold(
       appBar: AppBar(
         title: Text("Giỏ hàng"),
@@ -30,7 +34,7 @@ class CartScreen extends StatelessWidget {
                 itemCount: cart.cartItems.length,
                 itemBuilder: (context, index) {
                   final item = cart.cartItems[index];
-                  final product = item['product']; // ✅ FIX
+                  final product = item['product'];
 
                   final image = (product['image'] != null &&
                           product['image'].isNotEmpty)
@@ -50,16 +54,10 @@ class CartScreen extends StatelessWidget {
                     ),
                     child: ListTile(
                       leading: image != ''
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(image,
-                                  width: 60, fit: BoxFit.cover),
-                            )
+                          ? Image.network(image, width: 60)
                           : Icon(Icons.image),
 
-                      title: Text(product['name'],
-                          style:
-                              TextStyle(fontWeight: FontWeight.bold)),
+                      title: Text(product['name']),
 
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -83,15 +81,8 @@ class CartScreen extends StatelessWidget {
               ),
             ),
 
-            // 🔥 CHECKOUT
-            Container(
+            Padding(
               padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(color: Colors.black12, blurRadius: 5)
-                ],
-              ),
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   minimumSize: Size(double.infinity, 50),
