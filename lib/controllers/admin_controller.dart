@@ -45,6 +45,13 @@ class AdminController {
   }
 
   Future<void> deleteProduct(int productId) async {
+    // Xóa ảnh trước
+    await _client.from('image').delete().eq('product_id', productId);
+    // Xóa orderdetail có chứa sản phẩm này (để tránh lỗi khóa ngoại) - thường thực tế nên set status sản phẩm thành Inactive thay vì xóa
+    await _client.from('orderdetail').delete().eq('product_id', productId);
+    // Xóa trong giỏ hàng
+    await _client.from('cartitem').delete().eq('product_id', productId);
+    // Cuối cùng mới xóa sản phẩm
     await _client.from('product').delete().eq('product_id', productId);
   }
 
@@ -76,5 +83,10 @@ class AdminController {
         .from('orders')
         .update({'status': status})
         .eq('order_id', orderId);
+  }
+
+  Future<void> deleteOrder(int orderId) async {
+    await _client.from('orderdetail').delete().eq('order_id', orderId);
+    await _client.from('orders').delete().eq('order_id', orderId);
   }
 }

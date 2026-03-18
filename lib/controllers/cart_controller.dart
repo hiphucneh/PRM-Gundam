@@ -120,6 +120,26 @@ class CartController extends GetxController {
     }
   }
 
+  Future<void> updateQuantity(int cartItemId, int newQuantity) async {
+    if (newQuantity <= 0) {
+      await removeFromCart(cartItemId);
+      return;
+    }
+    
+    try {
+      isLoading.value = true;
+      await _client
+          .from('cartitem')
+          .update({'quantity': newQuantity})
+          .eq('item_id', cartItemId);
+          
+      await getCartItems();
+    } catch (e) {
+      Get.snackbar('Error', 'Lỗi khi cập nhật số lượng: $e');
+      isLoading.value = false;
+    }
+  }
+
   Future<bool> checkCartHasItems() async {
     try {
       final cart = await _client

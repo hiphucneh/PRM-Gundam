@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../controllers/product_controller.dart';
+import '../controllers/map_controller.dart';
 import 'product_detail.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -12,6 +15,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final controller = ProductController();
+  final mapController = Get.put(MapController());
 
   List products = [];
   List categories = [];
@@ -135,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   // 🔥 SCROLL NGANG
                   SizedBox(
-                    height: 230,
+                    height: 270,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       itemCount: filtered.length,
@@ -173,7 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisCount: 2,
                       crossAxisSpacing: 10,
                       mainAxisSpacing: 10,
-                      childAspectRatio: 0.72,
+                      childAspectRatio: 0.65,
                     ),
                     itemBuilder: (_, index) {
                       final p = filtered[index];
@@ -184,10 +188,126 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       return buildProductCard(p, image);
                     },
-                  )
+                  ),
+
+                  // ===== FOOTER MỚI THÊM =====
+                  buildFooter(),
+                  SizedBox(height: 20),
                 ],
               ),
             ),
+    );
+  }
+
+  // ===== FOOTER =====
+  Widget buildFooter() {
+    return Container(
+      margin: EdgeInsets.only(top: 20),
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(30),
+          topRight: Radius.circular(30),
+        ),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -2))
+        ]
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.store, color: Colors.orange, size: 28),
+              SizedBox(width: 10),
+              Text(
+                "Gundam Shop",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+              ),
+            ],
+          ),
+          SizedBox(height: 15),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.location_on, color: Colors.red, size: 20),
+              SizedBox(width: 10),
+              Expanded(child: Obx(() {
+                final address = mapController.storeLocation['address']?.toString() ??
+                    'Đang tải địa chỉ shop...';
+                return Text(
+                  address,
+                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                );
+              })),
+            ],
+          ),
+          SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(Icons.phone, color: Colors.green, size: 20),
+              SizedBox(width: 10),
+              Text(
+                "Hotline: 0123 456 789",
+                style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+              ),
+            ],
+          ),
+          SizedBox(height: 20),
+          
+          // Google Map Embed (Nút bấm mở Map)
+          GestureDetector(
+            onTap: () async {
+              final lat = mapController.storeLocation['lat'];
+              final lng = mapController.storeLocation['lng'];
+
+              final query = (lat != null && lng != null)
+                  ? '$lat,$lng'
+                  : (mapController.storeLocation['address']?.toString() ??
+                      'Gundam Shop Ho Chi Minh');
+
+              final Uri mapUrl = Uri.parse(
+                'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}',
+              );
+
+              if (!await launchUrl(mapUrl, mode: LaunchMode.externalApplication)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Không thể mở bản đồ'))
+                );
+              }
+            },
+            child: Container(
+              height: 150,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(15),
+                image: DecorationImage(
+                  image: NetworkImage("https://developers.google.com/static/maps/images/landing/hero_maps_static_api.png"),
+                  fit: BoxFit.cover,
+                ),
+                boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)]
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(15),
+                  color: Colors.black.withOpacity(0.4),
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.map, color: Colors.white, size: 40),
+                      SizedBox(height: 8),
+                      Text("Bấm để xem trên Google Map", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          )
+        ],
+      ),
     );
   }
 
@@ -260,9 +380,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text(product['name'],
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontWeight: FontWeight.bold)),
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
 
-                    SizedBox(height: 5),
+                    SizedBox(height: 4),
 
                     Row(
                       children: [
@@ -274,11 +394,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
 
-                    Spacer(),
+                    SizedBox(height: 4),
 
                     Text("${product['price']} VND",
                         style: TextStyle(
                             color: Colors.red,
+                            fontSize: 14,
                             fontWeight: FontWeight.bold)),
                   ],
                 ),

@@ -42,6 +42,24 @@ class _LoginScreenState extends State<LoginScreen>
 
   // ================= LOGIN =================
 
+    Future<void> _goByRole() async {
+      final role = await auth.getOrCreateCurrentUserRole();
+
+      if (!mounted) return;
+
+      if (role == 1) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => AdminScreen()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => MainScreen()),
+        );
+      }
+    }
+
   Future<void> login() async {
     if (emailController.text.isEmpty || passController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -57,43 +75,16 @@ class _LoginScreenState extends State<LoginScreen>
       passController.text.trim(),
     );
 
-    if (res == "SUCCESS") {
-      try {
-        final user = Supabase.instance.client.auth.currentUser;
-
-        // 🔥 LẤY ROLE
-        final roleData = await Supabase.instance.client
-            .from('User')
-            .select('role_id')
-            .eq('user_id', user!.id)
-            .single();
-
-        final role = roleData['role_id'];
-
-        setState(() => isLoading = false);
-
-        // ================= PHÂN LUỒNG =================
-
-        if (role == 1) {
-          // 👉 ADMIN
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => AdminScreen()),
+      if (res == "SUCCESS") {
+        try {
+          await _goByRole();
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Lỗi phân quyền: $e")),
           );
-        } else {
-          // 👉 USER
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => MainScreen()),
-          );
+        } finally {
+          if (mounted) setState(() => isLoading = false);
         }
-      } catch (e) {
-        setState(() => isLoading = false);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Lỗi lấy role: $e")),
-        );
-      }
     } else {
       setState(() => isLoading = false);
 
@@ -101,6 +92,29 @@ class _LoginScreenState extends State<LoginScreen>
           .showSnackBar(SnackBar(content: Text(res ?? "Lỗi đăng nhập")));
     }
   }
+
+    Future<void> loginWithGoogle() async {
+      setState(() => isLoading = true);
+
+      final res = await auth.signInWithGoogle();
+
+      if (res == "SUCCESS") {
+        try {
+          await _goByRole();
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Lỗi phân quyền Google: $e")),
+          );
+        } finally {
+          if (mounted) setState(() => isLoading = false);
+        }
+      } else {
+        if (mounted) setState(() => isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(res ?? "Đăng nhập Google thất bại")),
+        );
+      }
+    }
 
   // ================= UI =================
 
@@ -204,6 +218,20 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
 
                               SizedBox(height: 10),
+
+                                OutlinedButton.icon(
+                                  onPressed: isLoading ? null : loginWithGoogle,
+                                  style: OutlinedButton.styleFrom(
+                                    minimumSize: Size(double.infinity, 50),
+                                    side: BorderSide(color: Colors.grey.shade400),
+                                  ),
+                                  icon: Icon(Icons.g_mobiledata,
+                                      size: 28, color: Colors.red),
+                                  label: Text(
+                                    "Đăng nhập với Google",
+                                    style: TextStyle(color: Colors.black87),
+                                  ),
+                                ),
 
                               GestureDetector(
                                 onTap: () {

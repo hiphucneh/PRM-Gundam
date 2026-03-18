@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:get/get.dart';
 import '../controllers/cart_controller.dart';
+import '../controllers/profile_controller.dart';
+import 'order_success_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final List cartItems;
@@ -16,6 +18,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final name = TextEditingController();
   final phone = TextEditingController();
   final address = TextEditingController();
+  final profileController = ProfileController();
 
   String deliveryType = 'delivery'; // delivery | store
   bool isLoading = false;
@@ -23,40 +26,117 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final _client = Supabase.instance.client;
   final cart = Get.find<CartController>();
 
+  @override
+  void initState() {
+    super.initState();
+    _prefillFromProfile();
+  }
+
+  Future<void> _prefillFromProfile() async {
+    try {
+      final profile = await profileController.getProfile();
+      if (!mounted || profile == null) return;
+
+      name.text = (profile['full_name'] ?? '').toString();
+      phone.text = (profile['phone'] ?? '').toString();
+      address.text = (profile['address'] ?? '').toString();
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    name.dispose();
+    phone.dispose();
+    address.dispose();
+    super.dispose();
+  }
+
   double get total {
     double sum = 0;
     for (var item in widget.cartItems) {
-      sum += (item['product']['price'] as num) *
-          (item['quantity'] as int);
+      double price = 0;
+      var rawPrice = item['product']['price'];
+      
+      if (rawPrice is num) {
+        price = rawPrice.toDouble();
+      } else if (rawPrice != null) {
+        String priceStr = rawPrice.toString().replaceAll(',', '').replaceAll('.', '');
+        price = double.tryParse(priceStr) ?? 0;
+      }
+      
+      int qty = 1;
+      var rawQty = item['quantity'];
+      if (rawQty is num) {
+        qty = rawQty.toInt();
+      } else if (rawQty != null) {
+        qty = int.tryParse(rawQty.toString()) ?? 1;
+      }
+
+      sum += price * qty;
     }
     return sum;
   }
 
   Future<void> checkout() async {
     try {
+      final fullName = name.text.trim();
+      final phoneNumber = phone.text.trim();
+      final shippingAddress = address.text.trim();
+
+      if (fullName.isEmpty || phoneNumber.isEmpty || (deliveryType == 'delivery' && shippingAddress.isEmpty)) {
+        Get.snackbar("Lỗi", "Vui lòng nhập đầy đủ thông tin");
+        return;
+      }
+
       setState(() => isLoading = true);
+
+      try {
+        await profileController.updateProfile(
+          fullName: fullName,
+          phone: phoneNumber,
+          address: shippingAddress.isNotEmpty ? shippingAddress : null,
+        );
+      } catch (_) {}
 
       final userId = _client.auth.currentUser!.id;
 
-      // ✅ tạo order
-      final order = await _client.from('orders').insert({
+      // ✅ tạo order, có thể lưu thêm name, phone, address tuỳ cấu trúc db
+      // Cố gắng wrap trong try-catch để xem field có hợp lệ ko
+      Map<String, dynamic> insertData = {
         'customer_id': userId,
         'total_amount': total,
         'status': 'Pending',
-        'payment_method': deliveryType == 'delivery'
-            ? 'COD'
-            : 'Store Pickup',
-      }).select().single();
+        'payment_method': deliveryType == 'delivery' ? 'COD' : 'Store Pickup',
+      };
+
+      final order = await _client.from('orders').insert(insertData).select().single();
 
       final orderId = order['order_id'];
 
       // ✅ tạo order detail
       for (var item in widget.cartItems) {
+        double price = 0;
+        var rawPrice = item['product']['price'];
+        if (rawPrice is num) {
+          price = rawPrice.toDouble();
+        } else if (rawPrice != null) {
+          String priceStr = rawPrice.toString().replaceAll(',', '').replaceAll('.', '');
+          price = double.tryParse(priceStr) ?? 0;
+        }
+
+        int qty = 1;
+        var rawQty = item['quantity'];
+        if (rawQty is num) {
+          qty = rawQty.toInt();
+        } else if (rawQty != null) {
+          qty = int.tryParse(rawQty.toString()) ?? 1;
+        }
+
         await _client.from('orderdetail').insert({
           'order_id': orderId,
           'product_id': item['product']['product_id'],
-          'quantity': item['quantity'],
-          'unit_price': item['product']['price'],
+          'quantity': qty,
+          'unit_price': price,
         });
       }
 
@@ -76,13 +156,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       await cart.getCartItems();
 
-      Get.snackbar("Success", "Đặt hàng thành công 🎉");
-
+      // Get.snackbar("Success", "Đặt hàng thành công 🎉"); // Ẩn snackbar
+      
       if (!mounted) return;
-      Navigator.pop(context);
+      // Chuyển sang màn hình xác nhận đơn hàng thành công
+      Get.off(() => OrderSuccessScreen(orderId: orderId));
 
     } catch (e) {
-      Get.snackbar("Error", "Checkout failed: $e");
+      Get.snackbar("Lỗi đặt hàng", e.toString(), duration: Duration(seconds: 5));
     } finally {
       setState(() => isLoading = false);
     }

@@ -4,6 +4,35 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class AuthController {
   final _client = Supabase.instance.client;
 
+  Future<int> getOrCreateCurrentUserRole() async {
+    final user = _client.auth.currentUser;
+    if (user == null) throw Exception('User chưa đăng nhập');
+
+    final existing = await _client
+        .from('User')
+        .select('role_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+    if (existing != null) {
+      return (existing['role_id'] as num?)?.toInt() ?? 2;
+    }
+
+    final fullName = (user.userMetadata?['full_name'] ??
+            user.email?.split('@').first ??
+            'User')
+        .toString();
+
+    await _client.from('User').insert({
+      'user_id': user.id,
+      'email': user.email,
+      'full_name': fullName,
+      'role_id': 2,
+    });
+
+    return 2;
+  }
+
   /// 1. ĐĂNG NHẬP BẰNG GOOGLE (Cập nhật API v7+)
   Future<String?> signInWithGoogle() async {
     try {
@@ -31,6 +60,8 @@ class AuthController {
         provider: OAuthProvider.google,
         idToken: idToken,
       );
+
+      await getOrCreateCurrentUserRole();
 
       return "SUCCESS";
     } on AuthException catch (e) {

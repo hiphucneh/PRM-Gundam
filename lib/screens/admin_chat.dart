@@ -11,41 +11,65 @@ class AdminChatScreen extends StatelessWidget {
       stream: client
           .from('chat_message')
           .stream(primaryKey: ['id'])
-          .order('created_at'),
+          .order('created_at', ascending: false),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+        final messages = snapshot.data ?? [];
+
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            messages.isEmpty) {
           return Center(child: CircularProgressIndicator());
         }
 
-        final messages = snapshot.data!;
+        final latestByUser = <String, Map<String, dynamic>>{};
+        for (final message in messages) {
+          final uid = message['user_id']?.toString();
+          if (uid == null) continue;
+          latestByUser.putIfAbsent(uid, () => Map<String, dynamic>.from(message));
+        }
 
-        // 🔥 lấy danh sách user_id unique
-        final userIds = messages
-            .map((e) => e['user_id'])
-            .toSet()
-            .toList();
+        final conversations = latestByUser.entries.toList();
+
+        if (conversations.isEmpty) {
+          return Center(
+            child: Text(
+              'Chưa có cuộc hội thoại nào',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          );
+        }
 
         return ListView.builder(
-          itemCount: userIds.length,
+          padding: EdgeInsets.symmetric(vertical: 8),
+          itemCount: conversations.length,
           itemBuilder: (_, i) {
-            final uid = userIds[i];
+            final uid = conversations[i].key;
+            final latest = conversations[i].value;
+            final lastMessage = (latest['message'] ?? '').toString();
 
-            return ListTile(
-              leading: CircleAvatar(
-                backgroundColor: Colors.orange,
-                child: Icon(Icons.person, color: Colors.white),
+            return Card(
+              margin: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              child: ListTile(
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                leading: CircleAvatar(
+                  backgroundColor: Colors.orange,
+                  child: Icon(Icons.person, color: Colors.white),
+                ),
+                title: Text("User ${i + 1}"),
+                subtitle: Text(
+                  lastMessage.isNotEmpty ? lastMessage : uid,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: Icon(Icons.chat_bubble_outline, color: Colors.orange),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AdminChatDetail(userId: uid),
+                    ),
+                  );
+                },
               ),
-              title: Text("User $i"),
-              subtitle: Text(uid),
-              trailing: Icon(Icons.chat, color: Colors.orange),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AdminChatDetail(userId: uid),
-                  ),
-                );
-              },
             );
           },
         );

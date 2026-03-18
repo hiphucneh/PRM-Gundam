@@ -64,7 +64,42 @@ class CartScreen extends StatelessWidget {
                         children: [
                           Text("${product['price']} VND",
                               style: TextStyle(color: Colors.red)),
-                          Text("SL: ${item['quantity']}"),
+                          SizedBox(height: 8),
+                          Row(
+                            children: [
+                              InkWell(
+                                onTap: () {
+                                  cart.updateQuantity(item['item_id'], item['quantity'] - 1);
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: Colors.grey),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Icon(Icons.remove, size: 16),
+                                ),
+                              ),
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 12),
+                                child: Text("${item['quantity']}",
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              ),
+                              InkWell(
+                                onTap: () {
+                                  cart.updateQuantity(item['item_id'], item['quantity'] + 1);
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: Colors.grey),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Icon(Icons.add, size: 16),
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
 
@@ -89,13 +124,7 @@ class CartScreen extends StatelessWidget {
                   backgroundColor: Colors.orange,
                 ),
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          CheckoutScreen(cartItems: cart.cartItems),
-                    ),
-                  );
+                  Get.to(() => CheckoutScreen(cartItems: cart.cartItems.toList()));
                 },
                 child: Text("Thanh toán",
                     style: TextStyle(color: Colors.white)),

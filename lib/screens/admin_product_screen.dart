@@ -75,41 +75,73 @@ class _AdminProductScreenState extends State<AdminProductScreen> {
               ),
             ),
 
-            Padding(
-              padding: EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    p['name'],
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    "${p['price']} VND",
-                    style: TextStyle(
-                      color: Colors.red,
-                      fontWeight: FontWeight.bold,
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min, // Giúp Column ko lấn chiếm vùng của icon
+                  children: [
+                    Text(
+                      p['name'],
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                     ),
-                  ),
-                ],
+                    SizedBox(height: 2),
+                    Text(
+                      "${p['price']} VND",
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
 
-            Spacer(),
-
-            Align(
+            Container(
+              padding: EdgeInsets.only(right: 4, bottom: 4),
               alignment: Alignment.bottomRight,
               child: IconButton(
-                icon: Icon(Icons.delete, color: Colors.red),
-                onPressed: () async {
-                  await controller.deleteProduct(p['product_id']);
-
-                  if (!mounted) return; // ✅ FIX
-
-                  load();
+                padding: EdgeInsets.zero,
+                constraints: BoxConstraints(),
+                icon: Icon(Icons.delete, color: Colors.red, size: 24),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: Text("Xác nhận xóa"),
+                        content: Text("Bạn có chắc muốn xóa sản phẩm này không?"),
+                        actions: [
+                          TextButton(
+                            child: Text("Hủy", style: TextStyle(color: Colors.grey)),
+                            onPressed: () => Navigator.of(context).pop(),
+                          ),
+                          TextButton(
+                            child: Text("Xóa", style: TextStyle(color: Colors.red)),
+                            onPressed: () async {
+                              Navigator.of(context).pop(); // đóng dialog
+                              try {
+                                await controller.deleteProduct(p['product_id']);
+                                if (mounted) load();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text("Đã xóa sản phẩm"), duration: Duration(seconds: 2))
+                                );
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text("Lỗi xóa sản phẩm: $e"), backgroundColor: Colors.red)
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      );
+                    },
+                  );
                 },
               ),
             )
@@ -155,7 +187,7 @@ class _AdminProductScreenState extends State<AdminProductScreen> {
           crossAxisCount: 2,
           crossAxisSpacing: 10,
           mainAxisSpacing: 10,
-          childAspectRatio: 0.72,
+          childAspectRatio: 0.58, // Tăng chiều dọc để ko bị giới hạn
         ),
         itemBuilder: (_, i) => buildItem(products[i]),
       ),

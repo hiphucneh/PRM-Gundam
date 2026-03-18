@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart'; // ✅ THÊM
 import '../controllers/cart_controller.dart';
+import 'cart_screen.dart';
 
 class ProductDetailScreen extends StatelessWidget {
   final Map product;
@@ -17,7 +18,17 @@ class ProductDetailScreen extends StatelessWidget {
         : '';
 
     return Scaffold(
-      appBar: AppBar(title: Text(product['name'])),
+      appBar: AppBar(
+        title: Text(product['name']),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.shopping_cart_outlined),
+            onPressed: () {
+              Get.to(() => CartScreen());
+            },
+          ),
+        ],
+      ),
       body: ListView(
         children: [
           image != ''
