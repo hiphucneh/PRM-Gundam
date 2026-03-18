@@ -48,6 +48,14 @@ class AdminController {
     await _client.from('product').delete().eq('product_id', productId);
   }
 
+  // ✅ THÊM ĐOẠN NÀY
+  Future<void> updateProduct(int productId, Map<String, dynamic> updates) async {
+    await _client
+        .from('product')
+        .update(updates)
+        .eq('product_id', productId);
+  }
+
   // ================= CATEGORY =================
 
   Future<List<Map<String, dynamic>>> getCategories() async {

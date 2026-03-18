@@ -5,24 +5,23 @@ class ProductDetailScreen extends StatelessWidget {
   final Map product;
   final cart = CartController();
 
-  ProductDetailScreen({required this.product});
+  ProductDetailScreen({super.key, required this.product});
 
   @override
   Widget build(BuildContext context) {
-    final image = product['Image'] != null && product['Image'].isNotEmpty
-        ? product['Image'][0]['url']
+    // ✅ FIX QUAN TRỌNG
+    final image = (product['image'] != null && product['image'].isNotEmpty)
+        ? product['image'][0]['url']
         : '';
 
     return Scaffold(
       appBar: AppBar(title: Text(product['name'])),
-      body: Column(
+      body: ListView( // ✅ FIX overflow + scroll
         children: [
-          // IMAGE
           image != ''
               ? Image.network(image, height: 250, fit: BoxFit.cover)
               : Container(height: 250, color: Colors.grey[300]),
 
-          // INFO
           Padding(
             padding: EdgeInsets.all(16),
             child: Column(
@@ -30,18 +29,28 @@ class ProductDetailScreen extends StatelessWidget {
               children: [
                 Text(product['name'],
                     style:
-                        TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                        TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+
                 SizedBox(height: 10),
+
                 Text(
                   "${product['price']} VND",
                   style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 20,
                       color: Colors.red,
                       fontWeight: FontWeight.bold),
                 ),
+
+                SizedBox(height: 15),
+
+                // ✅ THÊM DESCRIPTION
+                Text("Mô tả:",
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                SizedBox(height: 5),
+                Text(product['description'] ?? "Chưa có mô tả"),
+
                 SizedBox(height: 20),
 
-                // BUTTON
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(

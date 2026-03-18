@@ -16,7 +16,6 @@ class CartController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    // Safely check if user is logged in before fetching on init
     if (_client.auth.currentUser != null) {
       getCartItems();
     }
@@ -25,18 +24,23 @@ class CartController extends GetxController {
   Future<void> getCartItems() async {
     try {
       isLoading.value = true;
-      // Get the user's cart first
-      final cart = await _client.from('Cart').select('cart_id').eq('user_id', _userId).maybeSingle();
+
+      final cart = await _client
+          .from('cart') // ✅ FIX
+          .select('cart_id')
+          .eq('user_id', _userId)
+          .maybeSingle();
+
       if (cart == null) {
         cartItems.clear();
         return;
       }
-      
+
       final response = await _client
-          .from('CartItem')
-          .select('*, Product(*, Image(*))')
+          .from('cartitem') // ✅ FIX
+          .select('*, product(*, image(*))') // ✅ FIX
           .eq('cart_id', cart['cart_id']);
-          
+
       cartItems.assignAll(List<Map<String, dynamic>>.from(response));
     } catch (e) {
       Get.snackbar('Error', 'Failed to fetch cart items: $e');
@@ -48,38 +52,48 @@ class CartController extends GetxController {
   Future<void> addToCart(int productId, int quantity) async {
     try {
       isLoading.value = true;
-      // Triggers automatically create a cart for new users, so we can assume it exists, or create one if not just in case
-      var cart = await _client.from('Cart').select('cart_id').eq('user_id', _userId).maybeSingle();
+
+      var cart = await _client
+          .from('cart')
+          .select('cart_id')
+          .eq('user_id', _userId)
+          .maybeSingle();
+
       if (cart == null) {
-        cart = await _client.from('Cart').insert({'user_id': _userId}).select('cart_id').single();
+        cart = await _client
+            .from('cart')
+            .insert({'user_id': _userId})
+            .select('cart_id')
+            .single();
       }
+
       final cartId = cart['cart_id'];
 
       final existingItem = await _client
-          .from('CartItem')
+          .from('cartitem')
           .select()
           .eq('cart_id', cartId)
           .eq('product_id', productId)
           .maybeSingle();
 
       if (existingItem != null) {
-        // Update existing quantity
         final newQuantity = (existingItem['quantity'] as int) + quantity;
+
         await _client
-            .from('CartItem')
+            .from('cartitem')
             .update({'quantity': newQuantity})
             .eq('item_id', existingItem['item_id']);
       } else {
-        // Insert new record
-        await _client.from('CartItem').insert({
+        await _client.from('cartitem').insert({
           'cart_id': cartId,
           'product_id': productId,
           'quantity': quantity,
         });
       }
-      
-      await getCartItems(); // Refresh the cart
-      Get.snackbar('Success', 'Item added to cart');
+
+      await getCartItems();
+
+      Get.snackbar('Success', 'Đã thêm vào giỏ 🛒');
     } catch (e) {
       Get.snackbar('Error', 'Failed to add item to cart: $e');
     } finally {
@@ -90,15 +104,17 @@ class CartController extends GetxController {
   Future<void> removeFromCart(int cartItemId) async {
     try {
       isLoading.value = true;
+
       await _client
-          .from('CartItem')
+          .from('cartitem') // ✅ FIX
           .delete()
           .eq('item_id', cartItemId);
-          
-      await getCartItems(); // Refresh the cart
-      Get.snackbar('Success', 'Item removed from cart');
+
+      await getCartItems();
+
+      Get.snackbar('Success', 'Đã xóa sản phẩm');
     } catch (e) {
-      Get.snackbar('Error', 'Failed to remove item from cart: $e');
+      Get.snackbar('Error', 'Failed to remove item: $e');
     } finally {
       isLoading.value = false;
     }
@@ -106,18 +122,22 @@ class CartController extends GetxController {
 
   Future<bool> checkCartHasItems() async {
     try {
-      final cart = await _client.from('Cart').select('cart_id').eq('user_id', _userId).maybeSingle();
+      final cart = await _client
+          .from('cart')
+          .select('cart_id')
+          .eq('user_id', _userId)
+          .maybeSingle();
+
       if (cart == null) return false;
 
       final response = await _client
-          .from('CartItem')
+          .from('cartitem')
           .select('item_id')
           .eq('cart_id', cart['cart_id'])
           .limit(1);
-          
+
       return response.isNotEmpty;
     } catch (e) {
-      // Return false if user not logged in or query fails
       return false;
     }
   }

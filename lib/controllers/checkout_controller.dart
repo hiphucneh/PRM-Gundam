@@ -17,53 +17,71 @@ class CheckoutController extends GetxController {
     required String address,
     required String phone,
     required List<Map<String, dynamic>> cartItems,
+    required String deliveryType, // ✅ thêm
   }) async {
     try {
       if (cartItems.isEmpty) {
-        throw Exception('Cart is empty. Cannot process payment.');
+        throw Exception('Cart is empty');
       }
 
       isProcessing.value = true;
 
-      // 1. Insert into 'Orders' table and get the created order
-      // Note: address/phone might better be stored in 'User' table since DB schema doesn't have shipping address in 'Orders' explicitly, or added to DB later.
-      final orderResponse = await _client.from('Orders').insert({
+      // ✅ 1. CREATE ORDER
+      final orderResponse = await _client
+          .from('orders') // ✅ FIX
+          .insert({
         'customer_id': _userId,
         'total_amount': totalAmount,
         'status': 'Pending',
-      }).select().single();
+        'payment_method':
+            deliveryType == 'delivery' ? 'COD' : 'Store Pickup',
+      })
+          .select()
+          .single();
 
       final orderId = orderResponse['order_id'];
 
-      // 2. Prepare OrderDetails from cart data
+      // ✅ 2. ORDER DETAILS
       final orderItemsData = cartItems.map((item) {
-        final productId = item['product_id'];
-        final quantity = item['quantity'];
-        
-        // Extract price from the nested joined Product table
-        final productData = item['Product'] as Map<String, dynamic>;
-        final price = productData['price']; 
+        final product = item['product']; // ✅ FIX
 
         return {
           'order_id': orderId,
-          'product_id': productId,
-          'quantity': quantity,
-          'unit_price': price,
+          'product_id': product['product_id'],
+          'quantity': item['quantity'],
+          'unit_price': product['price'],
         };
       }).toList();
 
-      // Insert all mapped records into 'OrderDetail' table
-      await _client.from('OrderDetail').insert(orderItemsData);
+      await _client
+          .from('orderdetail') // ✅ FIX
+          .insert(orderItemsData);
 
-      // 3. Clear the 'CartItem' for this user
-      final userCart = await _client.from('Cart').select('cart_id').eq('user_id', _userId).single();
-      await _client.from('CartItem').delete().eq('cart_id', userCart['cart_id']);
+      // ✅ 3. CLEAR CART
+      final userCart = await _client
+          .from('cart') // ✅ FIX
+          .select('cart_id')
+          .eq('user_id', _userId)
+          .maybeSingle();
 
-      Get.snackbar('Payment Success', 'Your order has been placed successfully.');
+      if (userCart != null) {
+        await _client
+            .from('cartitem') // ✅ FIX
+            .delete()
+            .eq('cart_id', userCart['cart_id']);
+      }
+
+      Get.snackbar(
+        'Success',
+        'Đặt hàng thành công 🎉',
+      );
+
       return true;
-
     } catch (e) {
-      Get.snackbar('Payment Error', 'Failed to process payment: $e');
+      Get.snackbar(
+        'Error',
+        'Thanh toán thất bại: $e',
+      );
       return false;
     } finally {
       isProcessing.value = false;
