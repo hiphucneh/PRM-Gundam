@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import '../controllers/admin_controller.dart';
+import 'admin_addproducts_screen.dart';
 
 class AdminProductScreen extends StatefulWidget {
+  const AdminProductScreen({super.key});
+
   @override
   State<AdminProductScreen> createState() => _AdminProductScreenState();
 }
@@ -18,46 +21,35 @@ class _AdminProductScreenState extends State<AdminProductScreen> {
   }
 
   Future<void> load() async {
-    final data = await controller.getProducts(); // ⚠️ nhớ sửa controller
+    final data = await controller.getProducts();
     setState(() {
       products = data;
       isLoading = false;
     });
   }
 
-  void addProduct() {
-    final name = TextEditingController();
-    final price = TextEditingController();
+  Widget buildItem(Map p) {
+    final images = p['image'] as List?;
+    final thumbnail =
+        images != null && images.isNotEmpty ? images[0]['url'] : null;
 
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text("➕ Thêm sản phẩm"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: name, decoration: InputDecoration(labelText: "Tên")),
-            TextField(controller: price, decoration: InputDecoration(labelText: "Giá")),
-          ],
+    return Card(
+      margin: EdgeInsets.only(bottom: 10),
+      child: ListTile(
+        leading: thumbnail != null
+            ? Image.network(thumbnail, width: 50)
+            : Icon(Icons.image),
+
+        title: Text(p['name']),
+        subtitle: Text("${p['price']} VND"),
+
+        trailing: IconButton(
+          icon: Icon(Icons.delete, color: Colors.red),
+          onPressed: () async {
+            await controller.deleteProduct(p['product_id']);
+            load();
+          },
         ),
-        actions: [
-          ElevatedButton(
-            onPressed: () async {
-              await controller.addProduct(
-                name: name.text,
-                categoryId: 1,
-                price: double.parse(price.text),
-                stock: 10,
-                description: "",
-                imageUrls: [],
-              );
-              Navigator.pop(context);
-              load();
-            },
-            child: Text("Thêm"),
-          )
-        ],
       ),
     );
   }
@@ -67,38 +59,24 @@ class _AdminProductScreenState extends State<AdminProductScreen> {
     if (isLoading) return Center(child: CircularProgressIndicator());
 
     return Scaffold(
+      appBar: AppBar(title: Text("Quản lý sản phẩm")),
       floatingActionButton: FloatingActionButton(
-        onPressed: addProduct,
-        backgroundColor: Colors.orange,
         child: Icon(Icons.add),
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const AddProductScreen(),
+            ),
+          );
+
+          if (result == true) load();
+        },
       ),
       body: ListView.builder(
         padding: EdgeInsets.all(10),
         itemCount: products.length,
-        itemBuilder: (_, i) {
-          final p = products[i];
-
-          return Container(
-            margin: EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(15),
-              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 5)],
-            ),
-            child: ListTile(
-              leading: Icon(Icons.shopping_bag, color: Colors.orange),
-              title: Text(p['name'], style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text("${p['price']} VND"),
-              trailing: IconButton(
-                icon: Icon(Icons.delete, color: Colors.red),
-                onPressed: () async {
-                  await controller.deleteProduct(p['product_id']);
-                  load();
-                },
-              ),
-            ),
-          );
-        },
+        itemBuilder: (_, i) => buildItem(products[i]),
       ),
     );
   }
